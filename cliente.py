@@ -4,8 +4,7 @@ import threading
 cliente = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 cliente.connect(("127.0.0.1", 5000))
 
-mensagem = cliente.recv(1024)
-print (mensagem.decode())
+
 
 def enviar_comandos():
     while True:
@@ -29,6 +28,9 @@ def receber_mensagens():
         except:
             break
 
+mensagem_inicial = cliente.recv(1024);
+print(mensagem_inicial.decode());
+
 thread_envio = threading.Thread(target=enviar_comandos)
 thread_recebimento = threading.Thread(target=receber_mensagens)
 
@@ -36,6 +38,6 @@ thread_envio.start()
 thread_recebimento.start()
 
 thread_envio.join()
-thread_recebimento.join()
+
 
 cliente.close()
