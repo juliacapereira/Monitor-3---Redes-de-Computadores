@@ -14,21 +14,39 @@ conexao, endereco = servidor.accept()
 
 print("Cliente conectado:", endereco)
 
-parar_cpu = threading.Event();
-
-encerrar = threading.Event();
+parar_cpu = threading.Event()
+parar_memoria = threading.Event()
+encerrar = threading.Event()
 
 horario = datetime.now().strftime("%H:%M:%S")
-mensagem = f"{horario}: CONECTADO!!"
+mensagem = f"""{horario}: CONECTADO!! 
+Comandos:
+CPU-<intervalo> 
+memoria-<intervalo>
+Quit-CPU
+Quit-memoria
+Exit"""
 
 conexao.send(mensagem.encode())
 
+def monitor_memoria(intervalo):
+    print("Thread Memória iniciada");
 
+    while not parar_memoria.is_set():
+
+        uso_memoria = psutil.virtual_memory().percent;
+
+        mensagem= f"Memória: {uso_memoria}%";
+        conexao.send(mensagem.encode());
+
+        parar_memoria.wait(intervalo);
+    
+    print("Thread de memória encerrada");
+    conexao.send("Monitoramento de memória encerrado".encode());
+        
 def monitor_cpu(intervalo):
 
     print("Thread CPU iniciada");
-
-    
 
     while not parar_cpu.is_set():
         uso_cpu = psutil.cpu_percent()
@@ -37,12 +55,10 @@ def monitor_cpu(intervalo):
 
         conexao.send(mensagem.encode())
 
-        parar_cpu.wait(intervalo);
+        parar_cpu.wait(intervalo)
 
-    print("Thread CPU encerrada");
-
-    conexao.send("Monitoramento finalizado.".encode());    
-
+    print("Thread de CPU encerrada");
+    conexao.send("Monitoramento finalizado".encode());    
 
 def receber_comandos():
 
@@ -58,15 +74,19 @@ def receber_comandos():
             print("Comando:", comando)
 
             if comando.lower() == "exit":
-                parar_cpu.set()
-                encerrar.set()
-                break
-
-            if comando.lower() == "quit":
                 parar_cpu.set();
-                continue;
+                parar_memoria.set();
+                encerrar.set();
+                break;
 
             partes = comando.split("-")
+
+            if partes[0].lower() == "quit":
+                if partes[1].lower() == "cpu":
+                    parar_cpu.set()
+                if partes[1].lower() == "memoria" or partes[1].lower() == "memória":
+                    parar_memoria.set()
+                continue;
 
             if partes[0].lower() == "cpu":
                 intervalo = int(partes[1])
@@ -79,6 +99,18 @@ def receber_comandos():
                 )
 
                 thread_cpu.start()
+
+            if partes[0].lower() == "memoria" or partes[0].lower() == "memória":
+
+                intervalo = int(partes[1]);
+
+                parar_memoria.clear();
+
+                thread_memoria = threading.Thread(
+                    target=monitor_memoria,
+                    args=(intervalo,)
+                )
+                thread_memoria.start()
 
         except:
             break
@@ -93,4 +125,4 @@ thread_recebimento.join()
 conexao.close()
 servidor.close()
 
-print("Servidor Encerrado");
+print("Servidor encerrado");
