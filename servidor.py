@@ -1,6 +1,5 @@
 import socket
 import threading
-import time
 import psutil
 from datetime import datetime
 
@@ -63,15 +62,18 @@ def monitor_cpu(intervalo):
 def receber_comandos():
 
     while not encerrar.is_set():
-        try:
-            dados = conexao.recv(1024)
+            try:
+                dados = conexao.recv(1024)
 
-            if not dados:
-                break
+                if not dados:
+                    break
 
-            comando = dados.decode().strip();
+                comando = dados.decode().strip();
 
-            print("Comando:", comando)
+                print("Comando:", comando)
+
+            except Exception as erro:
+                break;
 
             if comando.lower() == "exit":
                 parar_cpu.set();
@@ -89,7 +91,16 @@ def receber_comandos():
                 continue;
 
             if partes[0].lower() == "cpu":
-                intervalo = int(partes[1])
+
+                if len(partes) < 2:
+                    conexao.send("Comando Inválido. Use CPU-<segundos>".encode());
+                    continue;
+
+                
+                try:
+                    intervalo = int(partes[1])
+                except ValueError:
+                    conexao.send("Intervalo Inválido. Use um número inteiro".encode());
 
                 parar_cpu.clear();
 
@@ -102,7 +113,14 @@ def receber_comandos():
 
             if partes[0].lower() == "memoria" or partes[0].lower() == "memória":
 
-                intervalo = int(partes[1]);
+                if len(partes) < 2:
+                    conexao.send("Comando Inválido. Use memoria-<segundos>".encode());
+                    continue;
+
+                try:
+                    intervalo = int(partes[1])
+                except ValueError:
+                    conexao.send("Intervalo Inválido. Use um número inteiro".encode());
 
                 parar_memoria.clear();
 
@@ -112,8 +130,8 @@ def receber_comandos():
                 )
                 thread_memoria.start()
 
-        except:
-            break
+            conexao.send("Comando não reconhecido".encode());
+            continue;
 
 
 thread_recebimento = threading.Thread(target=receber_comandos)
