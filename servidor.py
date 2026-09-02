@@ -1,16 +1,54 @@
 import socket
 import threading
 import psutil
+import sys
 from datetime import datetime
 
 HOST = "127.0.0.1";
 PORT = 5000;
 
-print("Esperando conexão")
+if len(sys.argv)>1:
+    valor = sys.argv[1]
+
+else:
+    valor = input ("Digite o número maximo de clientes:")
+while True:
+    try:
+        max_clientes = int(valor)
+
+        if max_clientes<=0:
+            print("O número de clientes deve ser maior que zero.")
+            valor = input("Digite o número maximo de clientes:")
+            continue
+        break
+
+    except ValueError:
+        print("Valor inválido.")
+    valor = input("Digite o número maximo de clientes:")
+
+clientes_conectados = 0
+lock_clientes = threading.Lock()
+
 
 def tratar_cliente(conexao, endereco):
 
-    print("Cliente conectado:", endereco)
+    global clientes_conectados
+
+    with lock_clientes:
+
+        if(clientes_conectados>=max_clientes):
+            try:
+                conexao.send("Limite de clientes atingido".encode());
+            except:
+                pass
+            conexao.close();
+            print(f"Cliente {endereco} recusado" 
+                  f"limite de {max_clientes} atingido")
+
+            return
+
+        clientes_conectados+=1
+    print(f"Cliente conectado: {endereco} - ({clientes_conectados}/{max_clientes})");
 
     parar_cpu = threading.Event()
     parar_memoria = threading.Event()
@@ -28,8 +66,8 @@ def tratar_cliente(conexao, endereco):
     try:
         conexao.send(mensagem.encode());
     except:
-        conexao.close();
-        return;
+        liberar_vaga(endereco);
+        return
 
     def monitor_memoria(intervalo):
         print(f"[{endereco}]Thread Memória iniciada");
@@ -37,32 +75,36 @@ def tratar_cliente(conexao, endereco):
         while not parar_memoria.is_set():
 
             uso_memoria = psutil.virtual_memory().percent;
-
-            mensagem= f"Memória: {uso_memoria}%";
-            conexao.send(mensagem.encode());
-
+            try:
+                conexao.send(f"Memória: {uso_memoria}%".encode());
+            except:
+                break;
             parar_memoria.wait(intervalo);
         
-        print("Thread de memória encerrada");
-        conexao.send("Monitoramento de memória encerrado".encode());
-        
-    def monitor_cpu(intervalo):
+        print(f"[{endereco}]Thread de memória encerrada");
+        try:
+            conexao.send("Monitoramento de memória encerrado".encode());
+        except:
+            pass
 
+    def monitor_cpu(intervalo):
         print(f"[{endereco}]Thread CPU iniciada");
 
         while not parar_cpu.is_set():
             uso_cpu = psutil.cpu_percent()
 
-            mensagem = f"CPU: {uso_cpu}%"
-
-            conexao.send(mensagem.encode())
+            try:
+                conexao.send(f"CPU: {uso_cpu}%".encode())
+            except:
+                break
 
             parar_cpu.wait(intervalo)
 
-        print("Thread de CPU encerrada");
-        conexao.send("Monitoramento finalizado".encode());    
-
-
+        print(f"[{endereco}] Thread de CPU encerrada");
+        try:
+            conexao.send("Monitoramento finalizado".encode()); 
+        except:
+            pass
 
     try:
         while not encerrar.is_set():
@@ -77,8 +119,6 @@ def tratar_cliente(conexao, endereco):
                 break;
 
             print(f"[{endereco}[Comando:", comando)
-
-
 
             if comando.lower() == "exit":
                 parar_cpu.set();
@@ -106,7 +146,6 @@ def tratar_cliente(conexao, endereco):
                     conexao.send("Comando Inválido. Use CPU-<segundos>".encode());
                     continue;
 
-                
                 try:
                     intervalo = int(partes[1])
                 except ValueError:
@@ -140,7 +179,14 @@ def tratar_cliente(conexao, endereco):
         parar_cpu.set()
         parar_memoria.set()
         conexao.close()
-        print(f"Cliente desconectado: {endereco}")
+        liberar_vaga(endereco)
+
+
+    def liberar_vaga(endereco):
+        global clientes_desconectados
+        with lock_clientes:
+            clientes_conectados-=1;
+        print(f"Clientes desconectado: {endereco} ({clientes_conectados}/{max_clientes})")
 
 def main():
     servidor = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -148,7 +194,7 @@ def main():
     servidor.bind((HOST, PORT))
     servidor.listen()
 
-    print(f"Servidor no ar em {HOST}:{PORT}")
+    print(f"Servidor no ar em {HOST}:{PORT} com espaço para {max_clientes} clientes")
     print("Esperando conexões...")
 
     try:

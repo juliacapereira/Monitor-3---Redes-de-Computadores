@@ -1,10 +1,11 @@
 import socket
 import threading
 
+HOST ="127.0.0.1"
+PORT = 5000
+
 cliente = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-cliente.connect(("127.0.0.1", 5000))
-
-
+cliente.connect((HOST,PORT))
 
 def enviar_comandos():
     while True:
@@ -36,15 +37,17 @@ def receber_mensagens():
             break
 
 mensagem_inicial = cliente.recv(1024);
-print(mensagem_inicial.decode());
+texto_inicial = mensagem_inicial.decode();
+print(texto_inicial);
 
-thread_envio = threading.Thread(target=enviar_comandos)
-thread_recebimento = threading.Thread(target=receber_mensagens)
+if "CONECTADO" not in texto_inicial:
+    print("Não foi possível conectar, encerrando cliente.")
+    cliente.close()
 
-thread_envio.start()
-thread_recebimento.start()
-
-thread_envio.join()
-
-
-cliente.close()
+else:
+    thread_envio = threading.Thread(target=enviar_comandos)
+    thread_recebimento = threading.Thread(target=receber_mensagens)
+    thread_envio.start()
+    thread_recebimento.start()
+    thread_envio.join()
+    cliente.close()
