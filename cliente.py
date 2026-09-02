@@ -23,7 +23,7 @@ def receber_mensagens():
             if not mensagem:
                 break
 
-            print("\nServidor:", mensagem.decode())
+            print("\nServidor--", mensagem.decode())
 
         except:
             break
