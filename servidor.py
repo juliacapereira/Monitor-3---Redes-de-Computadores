@@ -118,7 +118,7 @@ def tratar_cliente(conexao, endereco):
             except Exception:
                 break;
 
-            print(f"[{endereco}[Comando:", comando)
+            print(f"[{endereco}]Comando:", comando)
 
             if comando.lower() == "exit":
                 parar_cpu.set();
@@ -182,11 +182,11 @@ def tratar_cliente(conexao, endereco):
         liberar_vaga(endereco)
 
 
-    def liberar_vaga(endereco):
-        global clientes_desconectados
-        with lock_clientes:
-            clientes_conectados-=1;
-        print(f"Clientes desconectado: {endereco} ({clientes_conectados}/{max_clientes})")
+def liberar_vaga(endereco):
+    global clientes_conectados
+    with lock_clientes:
+        clientes_conectados-=1;
+    print(f"Cliente desconectado: {endereco} ({clientes_conectados}/{max_clientes})")
 
 def main():
     servidor = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
