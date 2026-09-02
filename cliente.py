@@ -8,9 +8,15 @@ cliente.connect(("127.0.0.1", 5000))
 
 def enviar_comandos():
     while True:
-        comando = input("Digite um comando: ")
+        try:
+            comando = input("Digite um comando: ")
+        except (EOFError, KeyboardInterrupt):
+            comando = "exit"
 
-        cliente.send(comando.encode())
+        try:
+            cliente.send(comando.encode())
+        except:
+            break
 
         if comando.lower() == "exit":
             break
@@ -21,6 +27,7 @@ def receber_mensagens():
             mensagem = cliente.recv(1024)
 
             if not mensagem:
+                print("\nConexão encerrada pelo servidor.")
                 break
 
             print("\nServidor--", mensagem.decode())
