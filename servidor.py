@@ -53,6 +53,7 @@ def tratar_cliente(conexao, endereco):
     parar_cpu = threading.Event()
     parar_memoria = threading.Event()
     encerrar = threading.Event()
+    monitores_ativos = {"cpu": None, "memoria": None}
 
     horario = datetime.now().strftime("%H:%M:%S")
     mensagem = f"""{horario}: CONECTADO!! 
@@ -152,8 +153,14 @@ def tratar_cliente(conexao, endereco):
                     conexao.send("Intervalo Inválido. Use um número inteiro".encode());
                     continue;
 
+                if monitores_ativos["cpu"] and monitores_ativos["cpu"].is_alive():
+                    parar_cpu.set()
+                    monitores_ativos["cpu"].join()
+
                 parar_cpu.clear()
-                threading.Thread(target=monitor_cpu, args=(intervalo,), daemon=True).start()
+                t = threading.Thread(target=monitor_cpu, args=(intervalo,), daemon=True)
+                monitores_ativos["cpu"] = t
+                t.start()
                 continue
 
             if partes[0].lower() == "memoria" or partes[0].lower() == "memória":
@@ -168,10 +175,16 @@ def tratar_cliente(conexao, endereco):
                     conexao.send("Intervalo Inválido. Use um número inteiro".encode());
                     continue
 
-                parar_memoria.clear();
+                if monitores_ativos["memoria"] and monitores_ativos["memoria"].is_alive():
+                    parar_memoria.set()
+                    monitores_ativos["memoria"].join()
 
-                threading.Thread(target=monitor_memoria, args=(intervalo,), daemon=True).start()
+                parar_memoria.clear();
+                t = threading.Thread(target=monitor_memoria, args=(intervalo,), daemon=True)
+                monitores_ativos["memoria"] = t
+                t.start()
                 continue
+                
 
             conexao.send("Comando não reconhecido".encode());
             
