@@ -134,11 +134,11 @@ def tratar_cliente(conexao, endereco):
                     continue;
                 if partes[1].lower() == "cpu":
                     parar_cpu.set()
-                if partes[1].lower() == "memoria" or partes[1].lower() == "memória":
+                elif partes[1].lower() == "memoria" or partes[1].lower() == "memória":
                     parar_memoria.set()
                 else:
                     conexao.send("Comando não reconhecido".encode())
-                    continue;
+                continue;
 
             if partes[0].lower() == "cpu":
 
