@@ -28,6 +28,7 @@ while True:
 
 clientes_conectados = 0
 lock_clientes = threading.Lock()
+clientes_ativos = [];
 
 
 def tratar_cliente(conexao, endereco):
@@ -48,6 +49,7 @@ def tratar_cliente(conexao, endereco):
             return
 
         clientes_conectados+=1
+        clientes_ativos.append((conexao, endereco));
     print(f"Cliente conectado: {endereco} - ({clientes_conectados}/{max_clientes})");
 
     parar_cpu = threading.Event()
@@ -67,7 +69,7 @@ def tratar_cliente(conexao, endereco):
     try:
         conexao.send(mensagem.encode());
     except:
-        liberar_vaga(endereco);
+        liberar_vaga(conexao, endereco);
         return
 
     def monitor_memoria(intervalo):
@@ -192,13 +194,15 @@ def tratar_cliente(conexao, endereco):
         parar_cpu.set()
         parar_memoria.set()
         conexao.close()
-        liberar_vaga(endereco)
+        liberar_vaga(conexao, endereco)
 
 
 def liberar_vaga(endereco):
     global clientes_conectados
     with lock_clientes:
         clientes_conectados-=1;
+        if (conexao, endereco) in clientes_ativos:
+            clientes_ativos.remove((conexao, endereco));
     print(f"Cliente desconectado: {endereco} ({clientes_conectados}/{max_clientes})")
 
 def main():
@@ -210,9 +214,14 @@ def main():
     print(f"Servidor no ar em {HOST}:{PORT} com espaço para {max_clientes} clientes")
     print("Esperando conexões...")
 
+    servidor.settimeout(1.0)
+
     try:
         while True:
-            conexao, endereco = servidor.accept()
+            try:
+                conexao, endereco = servidor.accept()
+            except socket.timeout:
+                continue;
 
             thread_cliente = threading.Thread(
                 target=tratar_cliente,
@@ -222,6 +231,14 @@ def main():
             thread_cliente.start()
     except KeyboardInterrupt:
         print("\nEncerrando servidor...")
+        with lock_clientes:
+            for conexao, endereco in clientes_ativos:
+                try:
+                    conexao.send("Servidor encerrando conexão.".encode())
+                    conexao.close()
+                except:
+                    pass
+            clientes_ativos.clear()
     finally:
         servidor.close()
         print("Servidor encerrado")
