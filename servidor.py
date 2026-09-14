@@ -197,13 +197,17 @@ def tratar_cliente(conexao, endereco):
         liberar_vaga(conexao, endereco)
 
 
-def liberar_vaga(endereco):
+def liberar_vaga(conexao, endereco):
     global clientes_conectados
+
     with lock_clientes:
-        clientes_conectados-=1;
+        clientes_conectados -= 1
         if (conexao, endereco) in clientes_ativos:
-            clientes_ativos.remove((conexao, endereco));
-    print(f"Cliente desconectado: {endereco} ({clientes_conectados}/{max_clientes})")
+            clientes_ativos.remove((conexao, endereco))
+    print(
+        f"Cliente desconectado: {endereco} "
+        f"({clientes_conectados}/{max_clientes})"
+)
 
 def main():
     servidor = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
