@@ -1,11 +1,24 @@
 import socket
 import threading
+import sys
 
 HOST ="127.0.0.1"
 PORT = 5000
 
 cliente = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-cliente.connect((HOST,PORT))
+
+try:
+    cliente.connect((HOST, PORT))
+
+except ConnectionRefusedError:
+    print("Não foi possível conectar ao servidor")
+    cliente.close()
+    sys.exit()
+
+except OSError as erro:
+    print("Erro de conexão:", erro)
+    cliente.close()
+    sys.exit()
 
 def enviar_comandos():
     while True:
@@ -16,7 +29,8 @@ def enviar_comandos():
 
         try:
             cliente.send(comando.encode())
-        except:
+        except OSError:
+            print("\nNão foi possível enviar, conexão com o servidor perdida.")
             break
 
         if comando.lower() == "exit":
@@ -33,10 +47,26 @@ def receber_mensagens():
 
             print("\nServidor--", mensagem.decode())
 
-        except:
+        except ConnectionResetError:
+            print("\nConexão encerrada pelo servidor")
             break
 
-mensagem_inicial = cliente.recv(1024);
+        except OSError:
+            print("\nErro na conexão com o servidor")
+            break
+try:
+    mensagem_inicial = cliente.recv(1024);
+
+    if not mensagem_inicial:
+        print("Conexão encerrada pelo servidor")
+        cliente.close()
+        sys.exit()
+except OSError:
+    print("Erro na conexão com o servidor")
+    cliente.close()
+    sys.exit()
+
+
 texto_inicial = mensagem_inicial.decode();
 print(texto_inicial);
 
@@ -50,4 +80,5 @@ else:
     thread_envio.start()
     thread_recebimento.start()
     thread_envio.join()
+    thread_recebimento.join()
     cliente.close()

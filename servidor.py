@@ -115,11 +115,16 @@ def tratar_cliente(conexao, endereco):
                 dados = conexao.recv(1024)
 
                 if not dados:
+                    print(f"[{endereco}] Cliente desconectou sem dar exit")
                     break
 
                 comando = dados.decode().strip();
-            except Exception:
-                break;
+            except ConnectionResetError:
+                print(f"[{endereco}] Cliente desconectou")
+                break
+            except OSError:
+                print(f"[{endereco}] Erro na conexão com o cliente")
+                break
 
             print(f"[{endereco}]Comando:", comando)
 
@@ -201,12 +206,13 @@ def liberar_vaga(conexao, endereco):
     global clientes_conectados
 
     with lock_clientes:
-        clientes_conectados -= 1
         if (conexao, endereco) in clientes_ativos:
             clientes_ativos.remove((conexao, endereco))
+            clientes_conectados -= 1
+        atual = clientes_conectados
     print(
         f"Cliente desconectado: {endereco} "
-        f"({clientes_conectados}/{max_clientes})"
+        f"({atual}/{max_clientes})"
 )
 
 def main():
