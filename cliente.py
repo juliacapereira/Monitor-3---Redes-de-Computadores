@@ -79,6 +79,10 @@ else:
     thread_recebimento = threading.Thread(target=receber_mensagens)
     thread_envio.start()
     thread_recebimento.start()
-    thread_envio.join()
-    thread_recebimento.join()
-    cliente.close()
+    try: 
+        thread_envio.join()
+        thread_recebimento.join()
+    except KeyboardInterrupt:
+        print("\nEncerrando cliente...")
+    finally:
+        cliente.close()
