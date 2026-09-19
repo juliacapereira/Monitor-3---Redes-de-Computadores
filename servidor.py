@@ -57,6 +57,16 @@ def tratar_cliente(conexao, endereco):
     encerrar = threading.Event()
     monitores_ativos = {"cpu": None, "memoria": None}
 
+    def enviar_seguro(msg):
+        """Envia daddos ao cliente sem deixar exceção escapar da thread.
+        Retorna True se enviou, False se a conexão caiu."""
+        try: 
+            conexao.send(msg.encode())
+            return True
+        except (BrokenPipeError, ConnectionResetError, OSError):
+            encerrar.set()
+            return False
+
     horario = datetime.now().strftime("%H:%M:%S")
     mensagem = f"""{horario}: CONECTADO!! 
     Comandos:
@@ -138,26 +148,30 @@ def tratar_cliente(conexao, endereco):
 
             if partes[0].lower() == "quit":
                 if len(partes) < 2:
-                    conexao.send("Comando Inválido. Use Quit-CPU ou Quit-memoria".encode());
+                    if not enviar_seguro("Comando Inválido. Use Quit-CPU ou Quit-memoria"):
+                        break
                     continue;
                 if partes[1].lower() == "cpu":
                     parar_cpu.set()
                 elif partes[1].lower() == "memoria" or partes[1].lower() == "memória":
-                    parar_memoria.set()
+                    parar_memoria.set()       
                 else:
-                    conexao.send("Comando não reconhecido".encode())
+                     if not enviar_seguro("Comando não reconhecido"):
+                        break
                 continue;
 
             if partes[0].lower() == "cpu":
 
                 if len(partes) < 2:
-                    conexao.send("Comando Inválido. Use CPU-<segundos>".encode());
+                    if not enviar_seguro("Comando Inválido. Use CPU-<segundos>"):
+                        break
                     continue;
 
                 try:
                     intervalo = int(partes[1])
                 except ValueError:
-                    conexao.send("Intervalo Inválido. Use um número inteiro".encode());
+                    if not enviar_seguro("Intervalo Inválido. Use um número inteiro"):
+                        break
                     continue;
 
                 if monitores_ativos["cpu"] and monitores_ativos["cpu"].is_alive():
@@ -173,13 +187,15 @@ def tratar_cliente(conexao, endereco):
             if partes[0].lower() == "memoria" or partes[0].lower() == "memória":
 
                 if len(partes) < 2:
-                    conexao.send("Comando Inválido. Use memoria-<segundos>".encode());
+                    if not enviar_seguro("Comando Inválido. Use memoria-<segundos>"):
+                        break
                     continue;
 
                 try:
                     intervalo = int(partes[1])
                 except ValueError:
-                    conexao.send("Intervalo Inválido. Use um número inteiro".encode());
+                    if not enviar_seguro("Intervalo Inválido. Use um número inteiro"):
+                        break
                     continue
 
                 if monitores_ativos["memoria"] and monitores_ativos["memoria"].is_alive():
@@ -193,8 +209,9 @@ def tratar_cliente(conexao, endereco):
                 continue
                 
 
-            conexao.send("Comando não reconhecido".encode());
-            
+            if not enviar_seguro("Comando não reconhecido"):
+                break
+
     finally:
         parar_cpu.set()
         parar_memoria.set()
