@@ -58,7 +58,7 @@ def tratar_cliente(conexao, endereco):
     monitores_ativos = {"cpu": None, "memoria": None}
 
     def enviar_seguro(msg):
-        """Envia daddos ao cliente sem deixar exceção escapar da thread.
+        """Envia dados ao cliente sem deixar exceção escapar da thread.
         Retorna True se enviou, False se a conexão caiu."""
         try: 
             conexao.send(msg.encode())
